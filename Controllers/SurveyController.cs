@@ -18,8 +18,14 @@ namespace SurveyTool.Controllers
         [HttpPost]
         public async Task<IActionResult> AddSurvey([FromBody] Survey survey)
         {
-            if (survey == null) return BadRequest("Survey data is missing.");
-
+            if (survey == null || string.IsNullOrEmpty(survey.Title) || string.IsNullOrEmpty(survey.Description)) 
+                    return BadRequest("Survey data is missing.");
+            if (survey.Questions.Any(q => string.IsNullOrEmpty(q.Text) || q.TypeId <= 0))
+                return BadRequest("Survey data is bad or missing.");
+            if (survey.Questions.Any(q => q.Answers.Any(a => string.IsNullOrEmpty(a.Text))))
+                return BadRequest("Survey data is bad or missing");
+            if (survey.Questions.Any(q => q.Answers.Count > 0 && q.TypeId == 3))
+                return BadRequest("Free text questions cannot have answers");
             try
             {
                 await _SurveyDataTools.AddTblSurveyAsync(survey);
@@ -53,6 +59,8 @@ namespace SurveyTool.Controllers
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetSurvey(int id)
         {
+            if (id <= 0)
+                return BadRequest("Id must be valid id");
             try
             {
                 TblSurvey? tblSurvey = await _SurveyDataTools.GetTblSurveyAsync(id);
@@ -70,7 +78,7 @@ namespace SurveyTool.Controllers
         [HttpPut]
         public async Task<IActionResult> UpdateSurvey([FromBody] TblSurvey survey)
         {
-            if (survey == null)
+            if (survey == null || string.IsNullOrEmpty(survey.Title) || string.IsNullOrEmpty(survey.Description))
                 return BadRequest("Survey data is missing.");
 
             try
@@ -93,6 +101,8 @@ namespace SurveyTool.Controllers
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteSurvey(int id)
         {
+            if (id <= 0)
+                return BadRequest("Id must be valid id");
             try
             {
                 bool deletedSurvey = await _SurveyDataTools.DeleteTblSurveyAsync(id);
@@ -112,7 +122,12 @@ namespace SurveyTool.Controllers
         [HttpPost]
         public async Task<IActionResult> AddQuestion([FromBody] Question question)
         {
-            if (question == null) return BadRequest("Question data is required");
+            if (question == null || string.IsNullOrEmpty(question.Text) || question.TypeId <= 0)
+                return BadRequest("Question data is required");
+            if (question.Answers.Any(a => string.IsNullOrEmpty(a.Text)))
+                return BadRequest("Question data is bad or missing");
+            if (question.TypeId == 3 && question.Answers.Any())
+                return BadRequest("Free text question cannot have answers");
             try
             {
                 TblSurvey? tblSurvey = await _SurveyDataTools.GetTblSurveyAsync(question.SurveyId);
@@ -132,6 +147,8 @@ namespace SurveyTool.Controllers
         [HttpGet("{surveyId:int}")]
         public IActionResult GetQuestionsForSurvey(int surveyId)
         {
+            if (surveyId <= 0)
+                return BadRequest("Survey Id must be valid id");
             try
             {
                 List<Question> questions = _SurveyDataTools.GetQuestionsWithAnswersForSurvey(surveyId).ToList();
@@ -149,8 +166,12 @@ namespace SurveyTool.Controllers
         [HttpPut]
         public async Task<IActionResult> UpdateQuestion([FromBody] Question question)
         {
-            if (question == null)
-                return BadRequest("Question is missing information");
+            if (question == null || string.IsNullOrEmpty(question.Text) || question.TypeId <= 0)
+                return BadRequest("Question data is required");
+            if (question.Answers.Any(a => string.IsNullOrEmpty(a.Text)))
+                return BadRequest("Question data is bad or missing");
+            if (question.TypeId == 3 && question.Answers.Any())
+                return BadRequest("Free text question cannot have answers");
 
             try
             {
@@ -171,6 +192,8 @@ namespace SurveyTool.Controllers
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteQuestion(int id)
         {
+            if (id <= 0)
+                return BadRequest("Question Id must be valid id");
             try
             {
                 bool availableQuestion = await _SurveyDataTools.DeleteTblQuestion(id);
@@ -191,6 +214,10 @@ namespace SurveyTool.Controllers
         {
             if (response == null || response.ResponseAnswers.Count == 0)
                 return BadRequest("Response Data is missing.");
+            if (response.ResponseAnswers.Any(a => a.AnswerNumber == null && string.IsNullOrEmpty(a.FreeText)))
+                return BadRequest("Free text answer missing text");
+            if (response.ResponseAnswers.Any(a => a.QuestionId <= 0 || a.AnswerNumber <= 0))
+                return BadRequest("Missing question and answer ids");
             try
             {
                 response.ResponseId = await _SurveyDataTools.AddResponseAsync(response);
@@ -208,6 +235,8 @@ namespace SurveyTool.Controllers
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetResponseScore(int id)
         {
+            if (id <= 0)
+                return BadRequest("Id must be valid id");
             try
             {
                 string? score = await _SurveyDataTools.CalculateResponseScoreAsync(id);

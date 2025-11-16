@@ -150,9 +150,10 @@ namespace SurveyTool.Services
             await SurveyDB.TblQuestions.AddAsync(tblQuestion);
             await SurveyDB.SaveChangesAsync();
 
-            foreach (TblAnswer updatedAnswer in question.Answers)
+            for (int i=0; i < question.Answers.Count; i++)
             {
-                updatedAnswer.QuestionId = tblQuestion.QuestionId;
+                question.Answers[i].QuestionId = tblQuestion.QuestionId;
+                question.Answers[i].AnswerNumber = (byte)(i + 1);
             }
 
             await SurveyDB.TblAnswers.AddRangeAsync(question.Answers);
@@ -183,9 +184,10 @@ namespace SurveyTool.Services
             if (existingAnswers.Count > 0)
                 SurveyDB.TblAnswers.RemoveRange(existingAnswers);
 
-            foreach (TblAnswer newAnswer in question.Answers)
+            for (int i=0; i < question.Answers.Count; i++)
             {
-                newAnswer.QuestionId = existingQuestion.QuestionId;
+                question.Answers[i].QuestionId = existingQuestion.QuestionId;
+                question.Answers[i].AnswerNumber = (byte)(i + 1);
             }
 
             await SurveyDB.TblAnswers.AddRangeAsync(question.Answers);
